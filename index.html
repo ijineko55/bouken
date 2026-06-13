@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>選択式ブラウザゲーム</title>
+  <style>
+    :root {
+      --bg: #10131a;
+      --panel: #1b2130;
+      --panel-2: #232b3d;
+      --text: #f3f5f7;
+      --muted: #aab3c2;
+      --accent: #7cc7ff;
+      --accent-2: #b8e1ff;
+      --danger: #ff9b9b;
+      --shadow: rgba(0, 0, 0, 0.35);
+
+      /*
+        場面画像の比率です。
+        16 / 9 : スマホで選択肢まで見えやすい。おすすめ。
+        4 / 3  : 添付画像の比率。絵を大きく見せたい場合におすすめ。
+        1 / 1  : 正方形。SNS風、キャラ重視向け。
+      */
+      --scene-image-ratio: 16 / 9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, #26314a 0%, transparent 38%),
+        var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    main {
+      width: min(560px, 100%);
+      background: linear-gradient(180deg, var(--panel), #151a25);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 24px 80px var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 20px 22px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.25rem, 5vw, 1.75rem);
+      line-height: 1.25;
+    }
+
+    .scene-id {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .content {
+      padding: 22px;
+    }
+
+    .story {
+      white-space: pre-wrap;
+      font-size: 1.08rem;
+      line-height: 1.85;
+      margin: 0 0 16px;
+    }
+
+    .scene-image-wrap {
+      display: none;
+      width: 100%;
+      margin: 0 0 18px;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #0b0f17;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      aspect-ratio: var(--scene-image-ratio);
+    }
+
+    .scene-image-wrap.is-visible {
+      display: block;
+    }
+
+    .scene-image {
+      width: 100%;
+      height: 100%;
+      display: block;
+
+      /*
+        cover は枠いっぱいに表示する代わりに、画像の端が少し切れる場合があります。
+        切りたくない場合は contain に変更してください。
+      */
+      object-fit: cover;
+      object-position: center center;
+    }
+
+    .choices {
+      display: grid;
+      gap: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 15px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition:
+        transform 120ms ease,
+        border-color 120ms ease,
+        background 120ms ease;
+    }
+
+    button:hover,
+    button:focus-visible {
+      outline: none;
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: #28324a;
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .choice-number {
+      display: inline-grid;
+      place-items: center;
+      width: 1.75em;
+      height: 1.75em;
+      margin-right: 0.55em;
+      border-radius: 999px;
+      color: #0b1520;
+      background: var(--accent);
+      font-weight: 700;
+      font-size: 0.9em;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .toolbar button {
+      width: auto;
+      padding: 10px 13px;
+      color: var(--accent-2);
+      background: transparent;
+    }
+
+    .message {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    footer {
+      padding: 12px 22px 18px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 0;
+        place-items: stretch;
+        background: var(--bg);
+      }
+
+      main {
+        width: 100%;
+        min-height: 100vh;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+
+      header,
+      .content,
+      footer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .content {
+        padding-top: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="gameTitle">選択式ブラウザゲーム</h1>
+      <div id="sceneId" class="scene-id"></div>
+    </header>
+
+    <section class="content" aria-live="polite">
+
+      <figure id="sceneImageWrap" class="scene-image-wrap">
+        <img id="sceneImage" class="scene-image" src="" alt="">
+      </figure>
+
+      <p id="story" class="story">読み込み中...</p>
+
+      <div id="choices" class="choices"></div>
+
+      <div class="toolbar">
+        <button type="button" id="backButton">一つ戻る</button>
+        <button type="button" id="restartButton">最初から</button>
+      </div>
+
+      <div id="message" class="message"></div>
+    </section>
+
+    <footer>
+      場面データは <code>scenes.js</code>、画像は <code>images/</code> フォルダなどで管理します。
+    </footer>
+  </main>
+
+  <!--
+    scenes.js は index.html と同じフォルダに置いてください。
+
+    画像を表示したい場面には image を指定します。
+    画像を表示しない場面では image を省略できます。
+
+    例:
+    window.GAME_DATA = {
+      title: "スライムの森",
+      start: "start",
+      scenes: {
+        start: {
+          text: "スライムが現れた。",
+          image: "images/forest_slime_01.jpg",
+          imageAlt: "森に現れたスライム",
+          choices: [
+            { label: "助けを呼ぶ", next: "call_help" },
+            { label: "踊る", next: "dance" },
+            { label: "話しかける", next: "talk" },
+            { label: "その他", next: "other" }
+          ]
+        },
+        call_help: {
+          text: "遠くから誰かの声が聞こえる。",
+          image: "images/forest_path_01.jpg",
+          imageAlt: "森の奥へ続く道",
+          choices: [
+            { label: "声の方へ行く", next: "start" }
+          ]
+        }
+      }
+    };
+  -->
+  <script src="scenes.js"></script>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const titleElement = document.getElementById("gameTitle");
+      const sceneIdElement = document.getElementById("sceneId");
+      const storyElement = document.getElementById("story");
+      const sceneImageWrap = document.getElementById("sceneImageWrap");
+      const sceneImage = document.getElementById("sceneImage");
+      const choicesElement = document.getElementById("choices");
+      const messageElement = document.getElementById("message");
+      const backButton = document.getElementById("backButton");
+      const restartButton = document.getElementById("restartButton");
+
+      const gameData = window.GAME_DATA;
+      let currentSceneId = "";
+      let history = [];
+
+      function showMessage(text, isError = false) {
+        messageElement.textContent = text;
+        messageElement.classList.toggle("error", isError);
+      }
+
+      function validateGameData(data) {
+        if (!data || typeof data !== "object") {
+          throw new Error("GAME_DATA が見つかりません。scenes.js が読み込まれているか確認してください。");
+        }
+
+        if (!data.scenes || typeof data.scenes !== "object") {
+          throw new Error("GAME_DATA.scenes が見つかりません。");
+        }
+
+        if (!data.start || !data.scenes[data.start]) {
+          throw new Error("開始場面 GAME_DATA.start が正しく設定されていません。");
+        }
+      }
+
+      function getScene(sceneId) {
+        return gameData.scenes[sceneId] || null;
+      }
+
+      function renderSceneImage(scene) {
+        if (!scene.image) {
+          sceneImage.removeAttribute("src");
+          sceneImage.alt = "";
+          sceneImageWrap.classList.remove("is-visible");
+          return;
+        }
+
+        sceneImage.src = scene.image;
+        sceneImage.alt = scene.imageAlt || "";
+        sceneImageWrap.classList.add("is-visible");
+      }
+
+      function renderScene(sceneId, shouldPushHistory = true) {
+        const scene = getScene(sceneId);
+
+        if (!scene) {
+          showMessage(`場面「${sceneId}」が見つかりません。scenes.js の next 指定を確認してください。`, true);
+          return;
+        }
+
+        if (shouldPushHistory && currentSceneId) {
+          history.push(currentSceneId);
+        }
+
+        currentSceneId = sceneId;
+        location.hash = encodeURIComponent(sceneId);
+
+        const gameTitle = gameData.title || "選択式ブラウザゲーム";
+        const sceneTitle = scene.title || gameTitle;
+        storyElement.textContent = scene.text || "";
+
+        titleElement.textContent = sceneTitle === gameTitle
+          ? gameTitle
+          : `${gameTitle} - ${sceneTitle}`;
+        document.title = sceneTitle === gameTitle
+          ? gameTitle
+          : `${gameTitle} - ${sceneTitle}`;
+
+        sceneIdElement.textContent = `scene: ${sceneId}`;
+
+        renderSceneImage(scene);
+
+        choicesElement.innerHTML = "";
+
+        const choices = Array.isArray(scene.choices) ? scene.choices : [];
+
+        if (choices.length === 0) {
+          const endText = document.createElement("p");
+          endText.textContent = "ここで物語は終わりです。";
+          endText.className = "message";
+          choicesElement.appendChild(endText);
+        } else {
+          choices.forEach((choice, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+
+            const number = document.createElement("span");
+            number.className = "choice-number";
+            number.textContent = String(index + 1);
+
+            const label = document.createElement("span");
+            label.textContent = choice.label || `選択肢 ${index + 1}`;
+
+            button.append(number, label);
+
+            button.addEventListener("click", () => {
+              if (!choice.next) {
+                showMessage("この選択肢には next が設定されていません。", true);
+                return;
+              }
+
+              renderScene(choice.next);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            });
+
+            choicesElement.appendChild(button);
+          });
+        }
+
+        backButton.disabled = history.length === 0;
+        showMessage("");
+      }
+
+      function restartGame() {
+        history = [];
+        renderScene(gameData.start, false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function goBack() {
+        const previousSceneId = history.pop();
+
+        if (!previousSceneId) {
+          showMessage("戻れる場面がありません。");
+          return;
+        }
+
+        renderScene(previousSceneId, false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function getInitialSceneId() {
+        const hashSceneId = decodeURIComponent(location.hash.replace(/^#/, ""));
+        return hashSceneId && getScene(hashSceneId) ? hashSceneId : gameData.start;
+      }
+
+      try {
+        validateGameData(gameData);
+
+        backButton.addEventListener("click", goBack);
+        restartButton.addEventListener("click", restartGame);
+
+        renderScene(getInitialSceneId(), false);
+      } catch (error) {
+        titleElement.textContent = "読み込みエラー";
+        sceneIdElement.textContent = "";
+        storyElement.textContent = "ゲームデータを読み込めませんでした。";
+        sceneImageWrap.classList.remove("is-visible");
+        choicesElement.innerHTML = "";
+        showMessage(error.message, true);
+        backButton.disabled = true;
+        restartButton.disabled = true;
+      }
+    })();
+  </script>
+</body>
+</html>
